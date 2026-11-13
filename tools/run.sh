@@ -1,6 +1,9 @@
 #!/bin/sh
 # macOS / GNU/Linux用．POSIX sh，標準awk・sed等だけを使用する．
 set -u
+caller_lc_all=${LC_ALL-}
+caller_lc_ctype=${LC_CTYPE-}
+caller_lang=${LANG-}
 LC_ALL=C; export LC_ALL
 cd "$(dirname "$0")/.." || exit 2
 action=${1:-help}
@@ -92,7 +95,65 @@ absolute_file() {
     (cd "$(dirname "$ap")" && printf '%s/%s\n' "$(pwd -P)" "$(basename "$ap")")
 }
 
+select_java_locale() {
+    : > "$work/locale-checked.txt"
+    : > "$work/locale-probes.txt"
+    for locale_candidate in "$caller_lc_all" "$caller_lc_ctype" "$caller_lang" \
+        C.UTF-8 C.utf8 en_US.UTF-8 en_US.utf8; do
+        [ -n "$locale_candidate" ] || continue
+        grep -Fx -e "$locale_candidate" "$work/locale-checked.txt" >/dev/null && continue
+        printf '%s\n' "$locale_candidate" >> "$work/locale-checked.txt"
+        printf 'Candidate: %s\n' "$locale_candidate" >> "$work/locale-probes.txt"
+        locale_charmap=$(env LC_ALL="$locale_candidate" LANG="$locale_candidate" locale charmap 2>> "$work/locale-probes.txt")
+        locale_rc=$?
+        printf 'Exit: %s; charmap: %s\n' "$locale_rc" "$locale_charmap" >> "$work/locale-probes.txt"
+        [ "$locale_rc" -eq 0 ] || continue
+        case "$locale_charmap" in UTF-8|UTF8)
+            java_locale=$locale_candidate
+            printf 'Shell locale: C\nJava UTF-8 locale: %s\n' "$java_locale"
+            return 0;;
+        esac
+    done
+    printf '[ENV-LOCALE] FAIL: Java/RARS requires an available UTF-8 locale.\nChecked: ' >&2
+    paste -sd ' ' "$work/locale-checked.txt" >&2
+    return 2
+}
+
+prepare_java_cli_state() {
+    work_abs=$(cd "$work" && pwd -P) || return 2
+    java_cli_home=$work_abs/java-home
+    java_prefs_user=$work_abs/java-prefs-user
+    java_prefs_system=$work_abs/java-prefs-system
+    # FileSystemPreferencesが使う下位ディレクトリも作り，初回作成の診断と
+    # systemRootがjava.homeへフォールバックすることを防ぐ．
+    mkdir -p "$java_cli_home" "$java_prefs_user/.java/.userPrefs" \
+        "$java_prefs_system/.systemPrefs" || return 2
+    printf 'CLI user.home: %s\nCLI Preferences userRoot: %s\nCLI Preferences systemRoot: %s\n' \
+        "$java_cli_home" "$java_prefs_user" "$java_prefs_system"
+}
+
+bounded_java_cli() {
+    cli_dest=$1; cli_input=$2; shift 2
+    # macOSの通常のPreferencesも変更しないよう，CLIだけファイル保存方式にする．
+    bounded "$cli_dest" "$cli_input" env LC_ALL="$java_locale" LANG="$java_locale" \
+        "$java" -Dfile.encoding=UTF-8 -Duser.language=en -Duser.country=US \
+        "-Duser.home=$java_cli_home" \
+        -Djava.util.prefs.PreferencesFactory=java.util.prefs.FileSystemPreferencesFactory \
+        "-Djava.util.prefs.userRoot=$java_prefs_user" \
+        "-Djava.util.prefs.systemRoot=$java_prefs_system" "$@"
+    cli_rc=$?
+    [ "$cli_rc" -eq 0 ] || return "$cli_rc"
+    if grep -E 'java\.util\.prefs|[Pp]references|BackingStoreException' "$cli_dest/stderr.txt" >/dev/null; then
+        printf '[ENV-PREFS] FAIL: Java Preferences diagnostic in %s\n' "$cli_dest" >&2
+        cat "$cli_dest/stderr.txt" >&2
+        return 2
+    fi
+    return 0
+}
+
 environment() {
+    select_java_locale || return 2
+    prepare_java_cli_state || return 2
     if [ -n "${JAVA:-}" ]; then java_source=JAVA; candidate=$JAVA
     elif [ -n "${JAVA_HOME:-}" ]; then java_source=JAVA_HOME; candidate=$JAVA_HOME/bin/java
     else java_source=PATH; candidate=java; fi
@@ -101,7 +162,7 @@ environment() {
     }
     [ -x "$java" ] || { printf '[ENV-JAVA] FAIL: not executable: %s\n' "$java" >&2; return 2; }
     printf 'Java source: %s\nJava executable: %s\n' "$java_source" "$java"
-    if ! bounded "$work/java-version" /dev/null "$java" -version; then
+    if ! bounded_java_cli "$work/java-version" /dev/null -version; then
         printf '[ENV-JAVA] FAIL: cannot run Java (a launcher stub is not enough)\n' >&2
         cat "$work/java-version/stderr.txt" >&2; return 2
     fi
@@ -123,7 +184,7 @@ environment() {
     actual=${actual%% *}; expected=$(cat tools/rars.sha256)
     [ "$actual" = "$expected" ] || { printf '[ENV-SHA] FAIL: expected %s; actual %s\n' "$expected" "$actual" >&2; return 2; }
     printf 'RARS v1.6 SHA-256: %s\n' "$actual"
-    if ! bounded "$work/rars-version" /dev/null "$java" -Dfile.encoding=UTF-8 -jar "$jar" h ||
+    if ! bounded_java_cli "$work/rars-version" /dev/null -jar "$jar" h ||
        ! grep '^RARS 1\.6  ' "$work/rars-version/stdout.txt" >/dev/null; then
         printf '[ENV-RARS] FAIL: cannot confirm the RARS 1.6 banner\n' >&2; return 2
     fi
@@ -134,7 +195,7 @@ environment() {
 # 呼出しごとの独立した出力先を用い，dumpを再利用しない．
 rars() {
     case_dir=$1; in_file=$2; phase=$3; shift 3
-    if ! bounded "$case_dir" "$in_file" "$java" -Dfile.encoding=UTF-8 -Xmx128m -jar "$jar" nc me ae11 se12 mc Default sm 100000 "$@"; then
+    if ! bounded_java_cli "$case_dir" "$in_file" -Xmx128m -jar "$jar" nc me ae11 se12 mc Default sm 100000 "$@"; then
         printf '[RUN] FAIL: %s (exit %s)\n' "$case_dir" "$(cat "$case_dir/exit.txt")" >&2
         cat "$case_dir/stderr.txt" >&2; return 1
     fi
@@ -258,7 +319,7 @@ test-b) task_b; result=$?;;
 test) task_a; a_result=$?; task_b; b_result=$?; result=0
     [ "$a_result" -eq 0 ] && [ "$b_result" -eq 0 ] || result=1
     printf '[TEST] A=%s B=%s (0=PASS, 1=FAIL/UNFINISHED)\n' "$a_result" "$b_result";;
-gui) exec "$java" -Dfile.encoding=UTF-8 -jar "$jar";;
+gui) exec env LC_ALL="$java_locale" LANG="$java_locale" "$java" -Dfile.encoding=UTF-8 -jar "$jar";;
 esac
 printf 'Runner exit: %s; logs: %s\n' "$result" "$work"
 exit "$result"

@@ -1,5 +1,7 @@
 # 第3回教材の保守方針
 
+- Unix runnerのシェル処理はC localeを維持し，Java／RARSの起動時だけ実試験で選んだUTF-8 localeを適用する．日本語・空白を含む教材とJARのパスを，外側LC_ALL=Cのまま回帰試験する．
+- CLIは各run内の絶対パスのuser.homeとPreferences rootsへ隔離し，ファイル保存方式を使用する．GUIは利用者の通常設定を維持する．Cloud固有の外部ラッパーや手動のJavaプロパティ設定へ依存しない．
 - 東京科学大学，2026年度「計算機システム（演習）」第3回の学生配布教材．数理・計算科学系の学部2年生を対象とする．
 - 最新の第3回スライドで確定した例題・課題・学習内容を維持する．PowerPointの同期，Word雛形，正式レポート記入ガイド，内部採点資料は別工程とする．
 - RARS v1.6，Java 8以上，32ビットモード，Memory Configuration Defaultを用いる．RV32I整数命令と授業の疑似命令を扱う．GCC・QEMU・GDB・ELF生成を要求しない．

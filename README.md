@@ -285,6 +285,7 @@ make test-b
 
 ## 12．トラブルシューティング
 
+- `ENV-LOCALE`が失敗：Java／RARS用のUTF-8 localeを自動検出できなかった．表示された`Checked`と`build/run.*/locale-probes.txt`を教員・TAへ示し，利用環境を確認する．通常はlocaleやJavaの保存先を手動設定する必要はない．
 - Javaが見つからない／版が出ない：`JAVA`，`JAVA_HOME`，PATHの順に確認する．明示した誤設定を直すか，現在の端末から解除する．起動用スタブの案内だけではJavaが動いたことにならない．
 - JARがない／SHA不一致：採用されたパスを確認する．公式v1.6のJARを使い，ダウンロード途中のHTMLやcontinuous buildと混同しない．既存ファイルを無断で上書きしない．
 - WindowsでMakeがない：準備したPowerShellのウィンドウで別名を設定する．スクリプト実行が組織のポリシーで拒否される場合は，エラーを保持して教員・TAへ相談する．本教材は実行ポリシーを変更しない．
