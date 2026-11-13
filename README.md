@@ -31,13 +31,14 @@
 
 GCC，QEMU，GDB，ELF生成，Python，Node.js，Docker，WSL，`javac`は必要ない．管理者権限や恒久的なPATH変更を前提にしない．通常のmake実行ではダウンロードやネット接続を行わない．
 
-| 実際に確認した環境 | 使用した版 |
-| --- | --- |
-| macOS 27.2.1／Apple Silicon（arm64） | GNU Make 3.81，Oracle Java 1.8.0_511，RARS 1.6 |
+| 実際に確認した環境 | 使用した版 | 確認範囲 |
+| --- | --- | --- |
+| macOS 27.2.1／Apple Silicon（arm64） | Java 1.8.0_511，GNU Make 3.81，RARS 1.6 | CLIとRARS GUI |
+| Debian GNU/Linux 13.6（trixie）／x86_64 | OpenJDK 21.0.12.1，GNU Make 4.4.1，RARS 1.6 | CLI．GUIは未確認 |
 
-上表はCLIでの環境確認，例題，課題検査，空白・日本語パス，並列実行の確認結果である．GUIのHello World実行，Basic列，Data Segmentの画面確認は未実施であり，TA確認へ引き継ぐ．
+CLIではMakefile，例題，未完成課題の判定，隔離した正解版，誤実装・異常系，日本語・空白パス，読取り専用HOME，実行後メモリdump，タイムアウトと後始末を確認した．macOSではRARS GUIのHello World実行，Basic列，Data Segmentも確認済みである．
 
-Windows x64と西8計算機実習室GNU/LinuxはTAによる確認を予定している．第3回のGNU/Linux実機検証は未実施である．第1・2回の確認結果を第3回の確認済みとは扱わない．
+Windows x64と西8計算機実習室GNU/LinuxはTAによる確認を予定している．
 
 ## 3．教材の取得・更新
 
@@ -85,6 +86,9 @@ compsys-ex03/
 │   ├── cases.tsv
 │   ├── pseudo.original.s
 │   └── array.original.s
+├── report/
+│   ├── README.md
+│   └── ex03-report-template.docx
 └── build/
     └── .gitkeep
 ```
@@ -97,10 +101,11 @@ compsys-ex03/
 | [tasks/pseudo_task.s](tasks/pseudo_task.s) | 課題A：neg・bleの観察と置換 | `BEGIN NEG`～`END NEG`，`BEGIN BLE`～`END BLE`の内側だけ |
 | [tasks/array_task.s](tasks/array_task.s) | 課題B：配列の変換・書戻し・合計・表示 | `BEGIN TODO`～`END TODO`の内側だけ |
 | [Makefile](Makefile)，[tools/](tools/)，[tests/](tests/) | 実行・検査と配布原本 | 編集しない |
+| [report/README.md](report/README.md)，[Word雛形](report/ex03-report-template.docx) | 記入ガイドとレポート雛形 | 雛形をリポジトリ外へコピーして記入 |
 | `build/` | 実測ログ，一時ソース，メモリdump | 自動生成．レポート等の保管には使わない |
 | [AGENTS.md](AGENTS.md)，[.gitignore](.gitignore)，[.gitattributes](.gitattributes) | 保守・Gitの管理設定 | 編集しない |
 
-マーカーの行そのものと，その外側は変更しない．文字コードはUTF-8とする．課題のLF／CRLFの違いだけでは範囲検査を不合格にしない．正式なWord雛形とレポート記入ガイドは後続の案内を待つ．
+マーカーの行そのものと，その外側は変更しない．文字コードはUTF-8とする．課題のLF／CRLFの違いだけでは範囲検査を不合格にしない．レポートは[正式な記入ガイド](report/README.md)に従い，Word雛形をリポジトリ外へコピーして作成する．
 
 ## 5．JavaとRARSの準備
 
@@ -277,11 +282,54 @@ make test-b
 
 ## 11．レポート・提出・評価
 
-締切は**2027年1月8日（金）23:59，日本時間**．提出名は`学籍番号_ex03_code.zip`と`学籍番号_ex03_report.pdf`とする．正式なZIP内容，Word雛形，記入ガイドは後続工程で確定し，Science Tokyo LMSと授業の案内で知らせる．
+締切は**2027年1月8日（金）23:59，日本時間**．Science Tokyo LMSへ，`学籍番号_ex03_code.zip`と`学籍番号_ex03_report.pdf`を提出する．`学籍番号`を自分の番号へ置き換える．
 
-課題Aは元の疑似命令・編集前Basic列・自分の基本命令の対応，同じ働きになる理由，表記の違い，テストの識別名と実際の結果を記録する．課題Bは処理とレジスタの役割，主要処理とコードの対応，実際の出力，実行後のAの6要素を示す．
+[正式な記入ガイド](report/README.md)を読み，[Word雛形](report/ex03-report-template.docx)を**リポジトリ外へコピー**して`学籍番号_ex03_report.docx`として記入する．Wordファイル自体は提出しない．LaTeX等でも同じ設問・表の項目を維持する．
 
-命令，出力，配列内容は読み取れるテキストまたは表にする．スクリーンショットは任意で，有無や枚数を評価しない．コードとレポートを一致させ，PDFを開いて確認する．文章量や装飾は評価対象外である．テスト合格は正式な成績や満点を保証しない．詳細配点と模範解答は非公開．遅延提出は減点対象だが，具体率を本教材で新たに定めるものではない．
+課題Aは編集前のBasic列と自分の基本命令の対応，オペランド，同じ働きになる理由，テストの実測結果を記録する．課題Bは処理概要，使用レジスタ，コードとの対応，実際の出力，Run終了直後・Reset／再Assemble前のAの6要素，テスト結果を示す．ソース全文をレポートへ重複掲載せず，説明に必要な短い箇所だけ示す．
+
+スクリーンショットは任意で，有無や枚数を評価しない．必要な命令，出力，配列値は読み取れるテキストまたは表で記録する．画像だけで必須回答を代用できないが，補足画像は禁止しない．
+
+Word等からPDFへ出力し，全ページの文字・表・コードを開いて確認する．
+
+### コードZIPの作成
+
+提出するZIPは，次の2ファイルだけを入れ，`tasks/`の階層を保持する．
+
+```text
+学籍番号_ex03_code.zip
+└── tasks/
+    ├── pseudo_task.s
+    └── array_task.s
+```
+
+**GUIで作る場合**：リポジトリ外に空の提出用フォルダーを作り，その中に`tasks`フォルダーを作る．編集した`pseudo_task.s`と`array_task.s`の2ファイルだけをコピーする．この`tasks`フォルダーを選び，OSの「圧縮」「ZIPファイルに圧縮」等を使う．できたZIPを`学籍番号_ex03_code.zip`へ改名する．macOSではFinder，Windowsではエクスプローラー，GNU/Linuxでは利用環境のファイルマネージャーの圧縮機能を使える．追加ソフトウェアは必須ではない．
+
+任意のコマンド例（教材ルートで実行）．`学籍番号`を自分の番号へ置き換え，出力先に同名のZIPがないことを確認する．既存ZIPへ追記しない．
+
+macOS／GNU/Linuxで`zip`が使える場合：
+
+```sh
+zip -X "../学籍番号_ex03_code.zip" tasks/pseudo_task.s tasks/array_task.s
+```
+
+Windows PowerShell：
+
+```powershell
+Compress-Archive -LiteralPath .\tasks -DestinationPath ..\学籍番号_ex03_code.zip
+```
+
+PowerShell例の実行前に，`tasks`の中身が上記2ファイルだけであることを確認する．追加ファイルがある場合は，GUIの手順でリポジトリ外に2ファイルだけをコピーして圧縮する．
+
+**作成後は必ず別の空フォルダーへZIPを展開する**．最上位に`tasks`があり，その中に上記2ファイルだけがあることを確認する．2ファイルを開き，自分の最終コードと一致することも確認する．`.DS_Store`や`__MACOSX`等の自動付加ファイルが見える場合も取り除き，2ファイルだけで作り直す．`zip`の例は指定した2ファイルだけを格納する．
+
+`examples/`，`tests/`，`tools/`，`build/`，`report/`，`.git/`，README，Makefile，RARS JAR，ログ，dump，別の解答資料やその他の教材ファイルは含めない．
+
+### 提出前チェックと評価
+
+`make test-a`と`make test-b`を実行して結果を記録し，コードとレポートの内容，必須欄，ZIP展開後の中身，PDFの表示，提出名，締切を確認する．詳しいチェックリストは[記入ガイド](report/README.md#10提出前チェック)を参照する．
+
+テスト合格は正式採点や満点を保証しない．教員・TAがコード，条件遵守，説明と実測値の整合を確認する．文章量や装飾は評価対象外である．詳細配点と模範解答は非公開．遅延提出は減点対象だが，具体率を本教材で新たに定めるものではない．
 
 ## 12．トラブルシューティング
 
